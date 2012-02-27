@@ -1,0 +1,9 @@
+{
+  "application": {
+    "name": "sampleapp",
+    "framework": {
+      "name": "wsgi"
+    },
+    "container": "uwsgi"
+  }
+}
