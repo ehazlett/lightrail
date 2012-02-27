@@ -33,4 +33,3 @@ def generate_uwsgi_config(*args, **kwargs):
         uwsgi_config += 'user={0}\n'.format(kwargs['user'])
     uwsgi_config += 'stopsignal=QUIT\n' 
     return uwsgi_config
-    

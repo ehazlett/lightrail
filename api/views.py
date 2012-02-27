@@ -8,6 +8,13 @@ from utils.applications import Application
 app = create_app()
 bp = api_blueprint = Blueprint('api', __name__)
 
+def create_application(app_name=None):
+    application = Application(app_name=app_name, apps_root=app.config.get('APPLICATIONS_ROOT'), \
+        ve_root=app.config.get('VIRTUALENV_ROOT'), \
+        app_state_dir=app.config.get('APPLICATION_STATE_DIR'), \
+        supervisor_conf_dir=app.config.get('SUPERVISOR_CONF_DIR'))
+    return application
+
 @bp.route('')
 def index():
     data = {
@@ -19,14 +26,17 @@ def index():
 @api_key_required
 def deploy():
     data = {}
-    app_name = request.form.get('app', None)
     f = request.files['package']
     pkg = tempfile.mktemp()
     f.save(pkg)
     # create app and deploy
-    application = Application(pkg, apps_root=app.config.get('APPLICATIONS_ROOT'), \
-        ve_root=app.config.get('VIRTUALENV_ROOT'), \
-        app_state_dir=app.config.get('APPLICATION_STATE_DIR'), \
-        supervisor_conf_dir=app.config.get('SUPERVISOR_CONF_DIR'))
-    status = application.deploy()
+    application = create_application()
+    status = application.deploy(pkg)
+    return jsonify(status)
+
+@bp.route('/delete/<app_name>')
+@api_key_required
+def delete(app_name=None):
+    application = create_application(app_name)
+    status = application.delete()
     return jsonify(status)

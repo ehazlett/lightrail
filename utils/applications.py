@@ -15,9 +15,9 @@ class Application(object):
         Application
 
     '''
-    def __init__(self, app_pkg=None, apps_root=None, ve_root=None, app_state_dir=None,\
+    def __init__(self, app_name=None, apps_root=None, ve_root=None, app_state_dir=None,\
         supervisor_conf_dir=None):
-        self._app_pkg = app_pkg
+        self._app_pkg = None
         self._tmp_dir = tempfile.mkdtemp()
         if not apps_root or not ve_root or not app_state_dir or not supervisor_conf_dir:
             raise RuntimeError('You must specify an apps_root, ve_root, app_state_dir, and supervisor_conf_dir')
@@ -27,8 +27,10 @@ class Application(object):
         self._supervisor_conf_dir = supervisor_conf_dir
         self._manifest = None
         self._log = logging.getLogger('api')
-        self._unbundle()
-        self._read_manifest()
+        app_manifest = os.path.join(os.path.join(self._apps_root, app_name), 'manifest.json')
+        # try to read existing manifest
+        if os.path.exists(app_manifest):
+            self._read_manifest(app_manifest)
         self._app_dir = os.path.join(self._apps_root, self._app_name)
         self._ve_dir = os.path.join(self._ve_root, self._app_name)
 
@@ -37,8 +39,9 @@ class Application(object):
         z = zipfile.ZipFile(self._app_pkg, 'r')
         z.extractall(self._tmp_dir)
 
-    def _read_manifest(self):
-        manifest = os.path.join(self._tmp_dir, 'manifest.json')
+    def _read_manifest(self, manifest=None):
+        if not manifest:
+            manifest = os.path.join(self._tmp_dir, 'manifest.json')
         if os.path.exists(manifest):
             self._log.debug('Reading manifest')
             self._manifest = json.loads(open(manifest, 'r').read())
@@ -78,7 +81,12 @@ class Application(object):
         cmd = '{0}/bin/pip install --use-mirrors -r {1}/requirements.txt'.format(self._ve_dir, self._app_dir)
         self._log.debug(subprocess.check_output(cmd, shell=True))
 
-    def deploy(self):
+    def deploy(self, package=None):
+        if not package:
+            raise RuntimeError('You must specify a package')
+        self._app_pkg = package
+        self._unbundle()
+        self._read_manifest()
         # install app
         self._install_app()
         # install ve
@@ -92,6 +100,17 @@ class Application(object):
             app_state_dir=self._app_state_dir)
         supervisor_cfg = os.path.join(self._supervisor_conf_dir, '{0}.conf'.format(self._app_name))
         open(supervisor_cfg, 'w').write(cfg)
+        return {'status': 'ok'}
+
+    def delete(self):
+        supervisor_cfg = os.path.join(self._supervisor_conf_dir, '{0}.conf'.format(self._app_name))
+        if os.path.exists(supervisor_cfg):
+            os.remove(supervisor_cfg)
+        self._log.debug(subprocess.check_output('supervisorctl update', shell=True))
+        if os.path.exists(self._app_dir):
+            shutil.rmtree(self._app_dir)
+        if os.path.exists(self._ve_dir):
+            shutil.rmtree(self._ve_dir)
         return {'status': 'ok'}
         
     def cleanup(self):
