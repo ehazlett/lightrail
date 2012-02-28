@@ -6,6 +6,12 @@ API_KEYS = (
     'defaultapikey',
 )
 DEBUG = False
+REDIS_HOST = 'localhost'
+REDIS_PORT = 6379
+REDIS_DB = 0
+REDIS_PASSWORD = None
+TASK_QUEUE_NAME = 'queue'
+TASK_QUEUE_KEY_TTL = 86400
 
 APPLICATIONS_ROOT = '/var/tmp/apps'
 VIRTUALENV_ROOT = '/var/tmp/ve'

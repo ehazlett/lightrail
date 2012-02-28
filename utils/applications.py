@@ -4,35 +4,40 @@ import os
 import shutil
 import logging
 import subprocess
+from config import create_app
+import time
+from queue import task
 try:
     import simplejson as json
 except ImportError:
     import json
 from utils import generate_uwsgi_config
 
+app = create_app()
+
 class Application(object):
     '''
         Application
 
     '''
-    def __init__(self, app_name=None, apps_root=None, ve_root=None, app_state_dir=None,\
-        supervisor_conf_dir=None):
+    def __init__(self, app_name=None):
         self._app_pkg = None
         self._tmp_dir = tempfile.mkdtemp()
-        if not apps_root or not ve_root or not app_state_dir or not supervisor_conf_dir:
-            raise RuntimeError('You must specify an apps_root, ve_root, app_state_dir, and supervisor_conf_dir')
-        self._apps_root = apps_root
-        self._ve_root = ve_root
-        self._app_state_dir = app_state_dir
-        self._supervisor_conf_dir = supervisor_conf_dir
+        self._apps_root = app.config.get('APPLICATIONS_ROOT', None)
+        self._ve_root = app.config.get('VIRTUALENV_ROOT', None)
+        self._app_state_dir = app.config.get('APPLICATION_STATE_DIR', None)
+        self._supervisor_conf_dir = app.config.get('SUPERVISOR_CONF_DIR', None)
         self._manifest = None
         self._log = logging.getLogger('api')
-        app_manifest = os.path.join(os.path.join(self._apps_root, app_name), 'manifest.json')
-        # try to read existing manifest
-        if os.path.exists(app_manifest):
-            self._read_manifest(app_manifest)
-        self._app_dir = os.path.join(self._apps_root, self._app_name)
-        self._ve_dir = os.path.join(self._ve_root, self._app_name)
+        if app_name:
+            self._app_name = app_name
+            self._log.debug('Loading existing application manifest for {0}'.format(app_name))
+            app_manifest = os.path.join(os.path.join(self._apps_root, app_name), 'manifest.json')
+            # try to read existing manifest
+            if os.path.exists(app_manifest):
+                self._read_manifest(app_manifest)
+            else:
+                raise RuntimeError('Unable to find application manaifest for {0}'.format(app_name))
 
     def _unbundle(self):
         self._log.debug('Extracting {0}'.format(self._app_pkg))
@@ -66,6 +71,8 @@ class Application(object):
             self._app_name = app['name']
             self._app_framework = framework
             self._app_container = app['container']
+            self._app_dir = os.path.join(self._apps_root, self._app_name)
+            self._ve_dir = os.path.join(self._ve_root, self._app_name)
         except AssertionError, e:
             raise RuntimeError('Invalid application manifest: {0}'.format(e))
 
@@ -80,6 +87,15 @@ class Application(object):
         # install requirements
         cmd = '{0}/bin/pip install --use-mirrors -r {1}/requirements.txt'.format(self._ve_dir, self._app_dir)
         self._log.debug(subprocess.check_output(cmd, shell=True))
+
+    def _generate_status(self, action=None, result=None):
+        data = {
+            'date': time.time(),
+            'application': self._app_name,
+            'action': action,
+            'result': result,
+        }
+        return data
 
     def deploy(self, package=None):
         if not package:
@@ -100,7 +116,9 @@ class Application(object):
             app_state_dir=self._app_state_dir)
         supervisor_cfg = os.path.join(self._supervisor_conf_dir, '{0}.conf'.format(self._app_name))
         open(supervisor_cfg, 'w').write(cfg)
-        return {'status': 'ok'}
+        # update supervisor
+        self._log.debug(subprocess.check_output('supervisorctl update', shell=True))
+        return self._generate_status(action='deploy', result='ok')
 
     def delete(self):
         supervisor_cfg = os.path.join(self._supervisor_conf_dir, '{0}.conf'.format(self._app_name))
@@ -111,8 +129,26 @@ class Application(object):
             shutil.rmtree(self._app_dir)
         if os.path.exists(self._ve_dir):
             shutil.rmtree(self._ve_dir)
-        return {'status': 'ok'}
+        return self._generate_status(action='delete', result='ok')
         
     def cleanup(self):
         self._log.debug('Cleaning up')
         shutil.rmtree(self._tmp_dir)
+
+@task
+def deploy_application(app_name=None, pkg=None):
+    '''
+        Wrapper function for async task
+    '''
+    application = Application(app_name)
+    status = application.deploy(pkg)
+    return status
+
+@task
+def delete_application(app_name=None):
+    '''
+        Wrapper function for async task
+    '''
+    application = Application(app_name)
+    status = application.delete()
+    return status
