@@ -1,6 +1,7 @@
 {
   "application": {
     "name": "sampleapp",
+    "deployed_url": "sampleapp.com",
     "framework": {
       "name": "wsgi"
     },

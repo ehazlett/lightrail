@@ -1,6 +1,9 @@
 import os
 
 def generate_uwsgi_config(*args, **kwargs):
+    '''
+        Generates a uWSGI supervisor config
+    '''
     app_name = kwargs['app_name']
     app_dir = kwargs['app_dir']
     ve_dir = kwargs['ve_dir']
@@ -33,3 +36,21 @@ def generate_uwsgi_config(*args, **kwargs):
         uwsgi_config += 'user={0}\n'.format(kwargs['user'])
     uwsgi_config += 'stopsignal=QUIT\n' 
     return uwsgi_config
+
+def generate_nginx_config(*args, **kwargs):
+    '''
+        Generates an nginx config
+    '''
+    app_name = kwargs['app_name']
+    deployed_url = kwargs['deployed_url']
+    app_state_dir = kwargs['app_state_dir']
+    cfg = 'server {\n'
+    cfg += '    listen 80;\n'
+    cfg += '    server_name {0};\n'.format(deployed_url)
+    cfg += '    server_name_in_redirect off;\n'
+    cfg += '    location / {\n'
+    cfg += '        include uwsgi_params;\n'
+    cfg += '        uwsgi_pass unix://{0}/{1}.sock;\n'.format(app_state_dir, app_name)
+    cfg += '    }\n'
+    cfg += '}\n'
+    return cfg

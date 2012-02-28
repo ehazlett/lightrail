@@ -11,7 +11,7 @@ try:
     import simplejson as json
 except ImportError:
     import json
-from utils import generate_uwsgi_config
+from utils import generate_uwsgi_config, generate_nginx_config
 
 app = create_app()
 
@@ -27,6 +27,7 @@ class Application(object):
         self._ve_root = app.config.get('VIRTUALENV_ROOT', None)
         self._app_state_dir = app.config.get('APPLICATION_STATE_DIR', None)
         self._supervisor_conf_dir = app.config.get('SUPERVISOR_CONF_DIR', None)
+        self._nginx_conf_dir = app.config.get('NGINX_CONF_DIR', None)
         self._manifest = None
         self._log = logging.getLogger('api')
         if app_name:
@@ -67,10 +68,12 @@ class Application(object):
             framework = app['framework']
             assert 'name' in framework, "No framework name specified"
             assert 'container' in app, "No container specified"
+            assert 'deployed_url' in app, "No deployed url specified"
             # shortcuts
             self._app_name = app['name']
             self._app_framework = framework
             self._app_container = app['container']
+            self._deployed_url = app['deployed_url']
             self._app_dir = os.path.join(self._apps_root, self._app_name)
             self._ve_dir = os.path.join(self._ve_root, self._app_name)
         except AssertionError, e:
@@ -109,15 +112,20 @@ class Application(object):
         self._install_virtualenv()
         # generate supervisor config
         containers = { 'uwsgi': generate_uwsgi_config, }
-        cfg = containers[self._app_container](app_name=self._app_name, \
+        uwsgi_cfg = containers[self._app_container](app_name=self._app_name, \
             app_dir=self._app_dir,
             ve_dir=self._ve_dir,
             framework=self._app_framework,
             app_state_dir=self._app_state_dir)
         supervisor_cfg = os.path.join(self._supervisor_conf_dir, '{0}.conf'.format(self._app_name))
-        open(supervisor_cfg, 'w').write(cfg)
+        open(supervisor_cfg, 'w').write(uwsgi_cfg)
         # update supervisor
         self._log.debug(subprocess.check_output('supervisorctl update', shell=True))
+        # generate nginx config
+        nginx_cfg = os.path.join(self._nginx_conf_dir, '{0}.conf'.format(self._app_name))
+        cfg = generate_nginx_config(app_name=self._app_name, \
+            deployed_url=self._deployed_url, app_state_dir=self._app_state_dir)
+        open(nginx_cfg, 'w').write(cfg)
         return self._generate_status(action='deploy', result='ok')
 
     def delete(self):
