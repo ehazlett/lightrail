@@ -86,10 +86,10 @@ class Application(object):
 
     def _install_virtualenv(self):
         self._log.debug('Installing virtualenv')
-        self._log.debug(subprocess.check_output('virtualenv --no-site-packages {0}'.format(self._ve_dir), shell=True))
+        self._log.debug(subprocess.Popen('virtualenv --no-site-packages {0}'.format(self._ve_dir), shell=True, stdout=subprocess.PIPE).stdout.read())
         # install requirements
         cmd = '{0}/bin/pip install --use-mirrors -r {1}/requirements.txt'.format(self._ve_dir, self._app_dir)
-        self._log.debug(subprocess.check_output(cmd, shell=True))
+        self._log.debug(subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.read())
 
     def _generate_status(self, action=None, result=None):
         data = {
@@ -120,19 +120,24 @@ class Application(object):
         supervisor_cfg = os.path.join(self._supervisor_conf_dir, '{0}.conf'.format(self._app_name))
         open(supervisor_cfg, 'w').write(uwsgi_cfg)
         # update supervisor
-        self._log.debug(subprocess.check_output('supervisorctl update', shell=True))
+        self._log.debug(subprocess.Popen('supervisorctl update', shell=True, stdout=subprocess.PIPE).stdout.read())
         # generate nginx config
         nginx_cfg = os.path.join(self._nginx_conf_dir, '{0}.conf'.format(self._app_name))
         cfg = generate_nginx_config(app_name=self._app_name, \
             deployed_url=self._deployed_url, app_state_dir=self._app_state_dir)
         open(nginx_cfg, 'w').write(cfg)
+        self._log.debug(subprocess.Popen('service nginx reload', shell=True, stdout=subprocess.PIPE).stdout.read())
         return self._generate_status(action='deploy', result='ok')
 
     def delete(self):
         supervisor_cfg = os.path.join(self._supervisor_conf_dir, '{0}.conf'.format(self._app_name))
         if os.path.exists(supervisor_cfg):
             os.remove(supervisor_cfg)
-        self._log.debug(subprocess.check_output('supervisorctl update', shell=True))
+        self._log.debug(subprocess.Popen('supervisorctl update', shell=True, stdout=subprocess.PIPE).stdout.read())
+        nginx_cfg = os.path.join(self._nginx_conf_dir, '{0}.conf'.format(self._app_name))
+        if os.path.exists(nginx_cfg):
+            os.remove(nginx_cfg)
+        self._log.debug(subprocess.Popen('service nginx reload', shell=True, stdout=subprocess.PIPE).stdout.read())
         if os.path.exists(self._app_dir):
             shutil.rmtree(self._app_dir)
         if os.path.exists(self._ve_dir):
