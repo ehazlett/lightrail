@@ -86,7 +86,8 @@ class Application(object):
 
     def _install_virtualenv(self):
         self._log.debug('Installing virtualenv')
-        self._log.debug(subprocess.Popen('virtualenv --no-site-packages {0}'.format(self._ve_dir), shell=True, stdout=subprocess.PIPE).stdout.read())
+        self._log.debug(subprocess.Popen('virtualenv --no-site-packages {0}'.format(self._ve_dir), \
+            shell=True, stdout=subprocess.PIPE).stdout.read())
         # install requirements
         cmd = '{0}/bin/pip install --use-mirrors -r {1}/requirements.txt'.format(self._ve_dir, self._app_dir)
         self._log.debug(subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.read())

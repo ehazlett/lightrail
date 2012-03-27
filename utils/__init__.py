@@ -19,10 +19,11 @@ def generate_uwsgi_config(*args, **kwargs):
     if 've_dir' in kwargs:
         uwsgi_config += '  -H {0}\n'.format(ve_dir)
     uwsgi_config += '  -M\n'
-    uwsgi_config += '  -C\n'
+    uwsgi_config += '  -C 666\n'
     uwsgi_config += '  -p 2\n'
     uwsgi_config += '  --no-orphans\n'
     uwsgi_config += '  --vacuum\n'
+    uwsgi_config += '  --post-buffering\n'
     uwsgi_config += '  --harakiri 300\n'
     uwsgi_config += '  --max-requests 5000\n'
     uwsgi_config += '  --python-path {0}\n'.format(app_dir)
