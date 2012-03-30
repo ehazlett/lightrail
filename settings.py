@@ -15,6 +15,7 @@ TASK_QUEUE_KEY_TTL = 86400
 
 APPLICATIONS_ROOT = '/var/tmp/apps'
 APPLICATION_STATE_DIR = '/var/tmp/state'
+APPLICATION_USER = 'www-data'
 NGINX_CONF_DIR = '/var/tmp/nginx'
 SUPERVISOR_CONF_DIR = '/var/tmp/supervisor'
 VIRTUALENV_ROOT = '/var/tmp/ve'

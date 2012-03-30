@@ -6,6 +6,7 @@ import logging
 import subprocess
 from config import create_app
 import time
+import pwd
 from queue import task
 try:
     import simplejson as json
@@ -83,6 +84,15 @@ class Application(object):
         if os.path.exists(self._app_dir):
             shutil.rmtree(self._app_dir)
         shutil.copytree(self._tmp_dir, self._app_dir)
+        # set permissions
+        user = app.config.get('APPLICATION_USER')
+        for r,d,f in os.walk(self._app_dir):
+            for x in d:
+                os.chown(os.path.join(r, x), pwd.getpwnam(user).pw_uid, -1)
+                os.chmod(os.path.join(r, x), 770)
+            for x in f:
+                os.chown(os.path.join(r, x), pwd.getpwnam(user).pw_uid, -1)
+                os.chmod(os.path.join(r, x), 0660)
 
     def _install_virtualenv(self):
         self._log.debug('Installing virtualenv')
