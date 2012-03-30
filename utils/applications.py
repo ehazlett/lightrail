@@ -68,12 +68,10 @@ class Application(object):
             assert 'framework' in app, "No application framework specified"
             framework = app['framework']
             assert 'name' in framework, "No framework name specified"
-            assert 'container' in app, "No container specified"
             assert 'deployed_url' in app, "No deployed url specified"
             # shortcuts
             self._app_name = app['name']
             self._app_framework = framework
-            self._app_container = app['container']
             self._deployed_url = app['deployed_url']
             self._app_dir = os.path.join(self._apps_root, self._app_name)
             self._ve_dir = os.path.join(self._ve_root, self._app_name)
@@ -122,8 +120,8 @@ class Application(object):
         # install ve
         self._install_virtualenv()
         # generate supervisor config
-        containers = { 'uwsgi': generate_uwsgi_config, }
-        uwsgi_cfg = containers[self._app_container](app_name=self._app_name, \
+        containers = { 'wsgi': generate_uwsgi_config, }
+        uwsgi_cfg = containers[self._app_framework.get('name')](app_name=self._app_name, \
             app_dir=self._app_dir,
             ve_dir=self._ve_dir,
             framework=self._app_framework,
