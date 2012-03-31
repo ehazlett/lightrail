@@ -1,9 +1,11 @@
 from flask import Flask
 import redis
 
-def create_app():
+def create_app(config_module=None):
     app = Flask(__name__)
-    app.config.from_object('settings')
+    if not config_module:
+        config_module = 'settings'
+    app.config.from_object(config_module)
     return app
 
 def get_redis_connection():

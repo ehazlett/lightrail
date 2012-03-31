@@ -79,6 +79,7 @@ class Application(object):
             raise RuntimeError('Invalid application manifest: {0}'.format(e))
 
     def _install_app(self):
+        self._validate_manifest()
         if os.path.exists(self._app_dir):
             shutil.rmtree(self._app_dir)
         shutil.copytree(self._tmp_dir, self._app_dir)
@@ -86,10 +87,12 @@ class Application(object):
         user = app.config.get('APPLICATION_USER')
         for r,d,f in os.walk(self._app_dir):
             for x in d:
-                os.chown(os.path.join(r, x), pwd.getpwnam(user).pw_uid, -1)
+                if os.getuid() == 0:
+                    os.chown(os.path.join(r, x), pwd.getpwnam(user).pw_uid, -1)
                 os.chmod(os.path.join(r, x), 770)
             for x in f:
-                os.chown(os.path.join(r, x), pwd.getpwnam(user).pw_uid, -1)
+                if os.getuid() == 0:
+                    os.chown(os.path.join(r, x), pwd.getpwnam(user).pw_uid, -1)
                 os.chmod(os.path.join(r, x), 0660)
 
     def _install_virtualenv(self):

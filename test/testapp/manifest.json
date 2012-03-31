@@ -1,0 +1,9 @@
+{
+  "application": {
+    "name": "hellotest",
+    "deployed_url": "hellotest.local",
+    "framework": {
+      "name": "wsgi"
+    }
+  }
+}
